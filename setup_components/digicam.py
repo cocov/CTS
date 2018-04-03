@@ -16,7 +16,7 @@ class DigiCam:
         self.slow_ip = '192.168.0.0'
         self.slow_interface = 'eth3'
         self.slow_ip = '192.168.0.1'
-        self.slow_trigger_port =
+        self.slow_trigger_port = None
         # self.t telescope ID
         self.threshold_7 = 2047
         self.enable_trigger = False

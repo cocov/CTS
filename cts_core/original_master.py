@@ -69,8 +69,9 @@ class CTSMaster:
                 pix_y.append(pix.center[1])
                 pix_id.append(pix.ID)
             else:
-                pix_x.append(-200.)
-                pix_y.append(-200.)
+                print('pixel', pix.ID, 'not in cts.pixel_to_led[\'DC\']')
+                pix_x.append(-600.)
+                pix_y.append(-600.)
                 pix_id.append(pix.ID)
         pix_x = list(pix_x)
         pix_y = list(pix_y)
@@ -83,16 +84,23 @@ class CTSMaster:
         self.plots = []
         plt.subplot(1, 2, 1)
         self.plots.append(visualization.CameraDisplay(
-            geom, title='AC status', norm='lin', cmap='coolwarm'
+            geom, title='AC status', norm='lin', cmap='coolwarm',
+            autoscale=False
         ))
         self.plots[-1].add_colorbar()
         self.plots[-1].image = np.multiply(self.ac_status, self.ac_level)
+        # self.plots[-1].overlay_pixels_id()
+        self.plots[-1].axes.set_xlim([-500, 500])
+        self.plots[-1].axes.set_ylim([-500, 500])
         plt.subplot(1, 2, 2)
         self.plots.append(visualization.CameraDisplay(
-            geom, title='DC status', norm='lin', cmap='coolwarm'
+            geom, title='DC status', norm='lin', cmap='coolwarm',
+            autoscale=False
         ))
         self.plots[-1].add_colorbar()
         self.plots[-1].image = np.multiply(self.dc_status, self.dc_level)
+        self.plots[-1].axes.set_xlim([-500, 500])
+        self.plots[-1].axes.set_ylim([-500, 500])
 
     # Helper functions
     def update(self):
@@ -580,7 +588,7 @@ class CTSMaster:
                 ua.NodeId(nameb + '.AC_DCDC')
             ).get_value()
             print('| AC DCDC:', 0 if ac_dcdc > 0.5 else 1, end=' ')  # opposite
-            self.ac_status = int(
+            self.ac_status[pix] = int(
                 self.cts_client.client.get_node(
                     ua.NodeId(namep + '.LED' + str(pix) + '.Status')
                 ).get_value()
@@ -661,7 +669,11 @@ class CTSMaster:
 
     def plot(self):
         self.plots[0].image = np.multiply(self.ac_status, self.ac_level)
+        self.plots[0].axes.set_xlim([-500, 500])
+        self.plots[0].axes.set_ylim([-500, 500])
         self.plots[1].image = np.multiply(self.dc_status, self.dc_level)
+        self.plots[1].axes.set_xlim([-500, 500])
+        self.plots[1].axes.set_ylim([-500, 500])
         plt.show()
 
 

@@ -60,7 +60,7 @@ class ConfigMTS_module:
         for i in range(4):
             self.node_list.append(self.ModulesUnderTests[modules_list[i]]['node'])
 
-        print "Node list:", self.node_list
+        print("Node list:", self.node_list)
 
         self.csc = C.CameraSlowControlApplication(xml="CameraSlowControl.xml", crates=1, boards=4, verbose=1,
                                                   nodeIDs= self.node_list)

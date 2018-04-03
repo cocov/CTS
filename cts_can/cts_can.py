@@ -118,8 +118,6 @@ def command(
         broadcastAnswer=False,
         masterID=0b110,
         verbose=False):
-    # type: (object, object, object, object, object, object, object, object, object) -> object
-
     msgID = None
     cmdtypes = {
         'Abort': 0x00,
@@ -155,14 +153,54 @@ def command(
                     broadcastAnswer=broadcastAnswer,
                     verbose=verbose))
             if cmdtype == 'SetCANAddress' and canmsg[0] == 0x01:
-                recieveIDs.append(
-                    canID(
-                        masterID=masterID,
-                        slaveID=canmsg[1]+(slaveID-1) % 4,
-                        broadcastAnswer=False,
-                        answer=True,
-                        verbose=verbose)
-                    )
+                if slaveID != 126:
+                    recieveIDs.append([
+                        canID(
+                            masterID=masterID,
+                            slaveID=canmsg[1]+(slaveID-1) % 4,
+                            broadcastAnswer=False,
+                            answer=True,
+                            verbose=verbose),
+                        canID(
+                            masterID=masterID,
+                            slaveID=slaveID,
+                            broadcastAnswer=broadcastAnswer,
+                            answer=True,
+                            verbose=verbose)
+                    ])
+                else:
+                    recieveIDs.append([
+                        canID(
+                            masterID=masterID,
+                            slaveID=canmsg[1],
+                            broadcastAnswer=False,
+                            answer=True,
+                            verbose=verbose),
+                        canID(
+                            masterID=masterID,
+                            slaveID=canmsg[1]+1,
+                            broadcastAnswer=False,
+                            answer=True,
+                            verbose=verbose),
+                        canID(
+                            masterID=masterID,
+                            slaveID=canmsg[1]+2,
+                            broadcastAnswer=False,
+                            answer=True,
+                            verbose=verbose),
+                        canID(
+                            masterID=masterID,
+                            slaveID=canmsg[1]+3,
+                            broadcastAnswer=False,
+                            answer=True,
+                            verbose=verbose),
+                        canID(
+                            masterID=masterID,
+                            slaveID=slaveID,
+                            broadcastAnswer=broadcastAnswer,
+                            answer=True,
+                            verbose=verbose)
+                    ])
             else:
                 recieveIDs.append(
                     canID(
@@ -232,23 +270,30 @@ def setAddress(bus, origAdd, modnum):
 
 
 def setBoardAddresses(bus, boardnum):
-    # first get the adresses
-    resp = command(bus, range(1, 109), 'GetVersion',
+    modnum = (boardnum - 1) * 4 + 1
+    # get the adresses
+    slaveID = list(range(1, 109))
+    slaveID.append(126)
+    resp = command(bus, slaveID, 'GetVersion',
                    verbose=False, broadcast=True, broadcastAnswer=True)
-    addresses = sorted([r.arbitration_id for r in resp])
-    if len(addresses) != 4:
-        raise ConnectionAbortedError(
-            'found %d adresses when expected 4.' +
-            'Are several cards attached to CAN ?'
-        )
-    modules = [toMod(add) for add in addresses]
-    print('Original adresses:', addresses, ', modules:', modules)
-    # change the addresses
-    for mod in modules:
-        setAddress(bus, mod, boardnum * 4 + 1)
-    time.sleep(2)
+    if resp[0].arbitration_id == 0x6ff:
+        # The board is uninitialized
+        setAddress(bus, 126, modnum)
+    else:
+        addresses = sorted([r.arbitration_id for r in resp])
+        if len(addresses) != 4:
+            raise ConnectionAbortedError(
+                'found %d adresses when expected 4.' % len(addresses) +
+                'Are several cards attached to CAN ?'
+            )
+        modules = [toMod(add) for add in addresses]
+        print('Original adresses:', addresses, ', modules:', modules)
+        # change the addresses
+        for mod in modules:
+            setAddress(bus, mod, modnum)
+    time.sleep(0.1)
     # check new address
-    resp = command(bus, range(1, 109), 'GetVersion',
+    resp = command(bus, slaveID, 'GetVersion',
                    verbose=False, broadcast=True, broadcastAnswer=True)
     addresses = sorted([r.arbitration_id for r in resp])
     modules = [toMod(add) for add in addresses]
@@ -559,20 +604,6 @@ def flushAnswer(bus, verbose=False):
         if verbose:
             print(resp)
 
-"""
-# never used
-def resetAll(bus, status_dict, cmd_dict):
-    updateStatus(bus, status_dict)
-    for k in cmd_dict.keys():
-        if k.count('ACLED_Ch') > 0.5:
-            cmd_dict[k] = 0
-        elif k.count('DCDC') > 0.5:
-            cmd_dict[k] = 'OFF'
-        elif k.count('ACLED_Status') > 0.5:
-            cmd_dict[k] = ['OFF'] * 24
-    diffK = DictDiffer(status_dict, cmd_dict) # unused diffK
-    applyDict(bus, status_dict, cmd_dict)
-"""
 
 def initialise_can(cts):
     # First open the device
